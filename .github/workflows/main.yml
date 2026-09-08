@@ -1,21 +1,40 @@
-name: Test, Build, and Deploy | Modul 01 Lab2.2 Senior Project
- 
-on:
-  push:
-    branches: [ main ]
- 
-jobs:
-  test-build:
+  deploy:
+    needs: test-build
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         node-version: [16.x]
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Testing Build pre-Deploy
-        uses: actions/setup-node@v4
+      - name: Build app on VM
+        uses: appleboy/ssh-action@master
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
-      - run: npm install
-      - run: npm run build
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            eval "$(ssh-agent -s)"
+            ssh-add ~/.ssh/ssh-praktikan88
+            echo "Check project folder";
+            [ ! -d "${HOME}/senpro/533049/modul02/senpro-github-action/" ] &&
+            {
+              echo "Repository has not been cloned. Cloning...";
+              mkdir -p ~/senpro/533049/modul02;
+              cd ~/senpro/533049/modul02;
+              git clone https://github.com/alfierie/senpro-github-action/;
+              cd ~/senpro/533049/modul02/senpro-github-action;
+              echo "Install Packages and Build Project";
+              npm install;
+              npm run build;
+            } ||
+            {
+              echo "Repository already exists. Building...";
+              cd ~/senpro/533049/modul02/senpro-github-action;
+              git restore .;
+              git pull origin main;
+              echo "Install Packages and Build Project";
+              npm install;
+              npm run build;
+            }
